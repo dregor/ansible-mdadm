@@ -1,0 +1,42 @@
+- name: 'mdadm | include os-specific vars'
+  include_vars: "{{ ansible_os_family | lower }}.yml"
+
+- name: mdadm | Installing mdadm
+  package:
+    name: "mdadm"
+
+- name: mdadm | Get arrays status
+  shell: "mdadm --detail --scan"
+  register: "existed_arrays_raw"
+  changed_when: false
+
+- name: mdadm | Get existed_arrays
+  set_fact:
+    existed_arrays: '{{ existed_arrays | default([]) + [ item.split(" ")[1] ] }}'
+  with_items: "{{existed_arrays_raw.stdout_lines}}"
+
+- name: mdadm | Get arrays to create
+  set_fact:
+    arrays_to_create: '{{ arrays_to_create + [ item | combine({"name": "/dev/md/" + item.number | string})] }}'
+  when: 
+    - item.state | lower == "present"
+    - ("/dev/md/" + item.number | string) not in existed_arrays
+  with_items: "{{mdadm_arrays}}"
+
+- name: mdadm | Get arrays to delete
+  set_fact:
+    arrays_to_delete: '{{ arrays_to_delete + [ item | combine({"name": "/dev/md/" + item.number | string})] }}'
+  when: 
+    - item.state | lower == "absent"
+    - ("/dev/md/" + item.number| string) in existed_arrays
+  with_items: "{{mdadm_arrays}}"
+
+- name: mdadm | Delete arrays
+  include_tasks: delete_arrays.yml
+  with_items: "{{arrays_to_delete}}"
+  loop_control:
+    loop_var: array_item
+
+- name: mdadm | Create arrays
+  include_tasks: create_arrays.yml
+  with_items: "{{arrays_to_create}}"

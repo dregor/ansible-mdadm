@@ -1,0 +1,24 @@
+- name: mdadm | Unmounting arrays
+  mount:
+    name: "{{ array_item.mountpoint }}"
+    src: "{{ array_item.name }}"
+    state: "unmounted"
+  when: array_item.mountpoint is defined
+
+- name: mdadm | Stopping arrays
+  command: "mdadm --stop {{ array_item.name }}"
+  notify:  update initramfs
+
+- name: mdadm | Remove line from mdadm.conf
+  lineinfile:
+    path: '{{mdadm_conf}}'
+    state: absent
+    regexp: '^ARRAY {{array_item.name}}'
+
+- name: mdadm | zero-superblock 
+  command: "mdadm --zero-superblock {{ item }}"
+  with_items: "{{ array_item.devices }}"
+        
+- name: mdadm | Wiping Out Array Devices
+  command: "wipefs -af {{ item }}"
+  with_items: "{{ array_item.devices }}"

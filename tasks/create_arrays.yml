@@ -1,0 +1,27 @@
+- name: mdadm | Creating arrays main
+  shell: "yes | mdadm --create {{ item.name }} --level={{ item.level }} --raid-devices={{ item.devices | count }} {{ item.devices| join (' ') }}"
+  notify:  update initramfs
+
+- name: mdadm | Make arrays permanent
+  shell: 'echo -e "DEVICE partitions\nMAILADDR root\n$(mdadm --detail --scan)" > {{mdadm_conf}}'
+
+- name: mdadm | Creating arrays filesystem
+  filesystem:
+    fstype: "{{ item.filesystem }}"
+    opts: "{{ item.filesystem_opts | default(omit) }}"
+    dev: "{{ item.name }}"
+
+- name: mdadm | Get UUID
+  shell: "blkid {{ item.name }}| cut -d ' ' -f 2"
+  register: "array_uuid"
+
+- name: mdadm | Mounting arrays
+  mount:
+    name: "{{ item.mountpoint }}"
+    src: "{{ array_uuid.stdout }}"
+    fstype: "{{ item.filesystem }}" 
+    state: "mounted"
+    opts: "{{ item.opts | default(omit) }}"
+  when:
+    - item.filesystem is defined
+    - item.mountpoint is defined
