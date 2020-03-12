@@ -2,7 +2,7 @@
   mount:
     name: "{{ array_item.mountpoint }}"
     src: "{{ array_item.name }}"
-    state: "unmounted"
+    state: "absent"
   when: array_item.mountpoint is defined
 
 - name: mdadm | Stopping arrays
