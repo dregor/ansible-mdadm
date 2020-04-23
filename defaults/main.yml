@@ -1,3 +1,4 @@
 mdadm_arrays: []
 arrays_to_create: []
 arrays_to_delete: []
+existed_arrays: []
